@@ -1,4 +1,5 @@
 # 3D Wireframe Cube
+@tsoding 从tsoding那里学到的一点新知识。
 
 一个用 TypeScript 和 Canvas 手写的最小 3D 线框立方体渲染项目。
 

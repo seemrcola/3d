@@ -7,7 +7,6 @@ import type { Point, Point3D } from './types'
 //   screenY = y / z
 //
 // z 越大，x / z 和 y / z 越小，所以远处的东西看起来更小。
-// 这就是“近大远小”的核心。
-export function project({x, y, z}: Point3D): Point {
+export function perspectiveProject({ x, y, z }: Point3D): Point {
   return { x: x / z, y: y / z }
 }

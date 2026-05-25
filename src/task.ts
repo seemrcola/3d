@@ -3,14 +3,14 @@ type PipeFunction = (value: any, ...args: any[]) => any
 // 一个很轻量的链式调用工具。
 //
 // 它解决的问题是：把这种从里往外读的嵌套调用：
-//   screen(project(translate_z(rotate_xz(v, angle), dz)))
+//   mapToViewport(perspectiveProject(translateZ(rotateXZ(v, angle), dz)), viewport)
 //
 // 改成从上往下读的流水线：
 //   task(v)
-//     .pipe(rotate_xz, angle)
-//     .pipe(translate_z, dz)
-//     .pipe(project)
-//     .pipe(screen)
+//     .pipe(rotateXZ, angle)
+//     .pipe(translateZ, dz)
+//     .pipe(perspectiveProject)
+//     .pipe(mapToViewport, viewport)
 //     .value()
 //
 // pipe() 会把当前值作为第一个参数传给函数。

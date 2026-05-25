@@ -2,17 +2,21 @@ import {
   BACKGROUND_COLOR,
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
-  CUBE_FACES,
-  CUBE_VERTICES,
   FOREGROUND_COLOR,
   FPS,
   LINE_WIDTH
 } from './constants'
-import { project } from './project'
+import {
+  CUBE_FACES,
+  CUBE_VERTICES,
+  mapToViewport,
+  perspectiveProject,
+  rotateXZ,
+  rotateYZ,
+  translateZ
+} from './core'
 import { drawColoredFaces } from './render'
-import { screen } from './screen'
 import { task } from './task'
-import { translate_z, rotate_xz, rotate_yz } from './translate'
 
 // dz 控制立方体沿 z 轴移动的距离。
 // angle 控制立方体当前旋转角度。
@@ -60,17 +64,17 @@ function frame() {
   // 3D 顶点 -> 绕 y 轴旋转 -> 绕 x 轴旋转 -> 沿 z 轴平移。
   const transformed = CUBE_VERTICES.map(v =>
     task(v)
-      .pipe(rotate_xz, angle)
-      .pipe(rotate_yz, angle)
-      .pipe(translate_z, dz)
+      .pipe(rotateXZ, angle)
+      .pipe(rotateYZ, angle)
+      .pipe(translateZ, dz)
       .value()
   )
 
   // 变换后的 3D 点 -> 透视投影 -> canvas 像素坐标。
   const projected = transformed.map(v =>
     task(v)
-      .pipe(project)
-      .pipe(screen)
+      .pipe(perspectiveProject)
+      .pipe(mapToViewport, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT })
       .value()
   )
 

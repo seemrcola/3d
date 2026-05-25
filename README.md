@@ -34,15 +34,37 @@
 ├── package.json        # Bun / TypeScript 项目配置
 ├── tsconfig.json       # TypeScript 编译检查配置
 └── src
-    ├── constants.ts    # 画布尺寸、颜色、FPS、立方体顶点和面
-    ├── index.ts        # 主渲染入口，负责 canvas 初始化和动画循环
-    ├── project.ts      # 透视投影：3D 坐标 -> 2D 坐标
-    ├── render.ts       # 面的深度排序、填色和轮廓绘制
-    ├── screen.ts       # 屏幕映射：标准化 2D 坐标 -> canvas 像素坐标
-    ├── task.ts         # 链式调用工具，用来组织顶点转换流水线
-    ├── translate.ts    # 3D 变换：z 轴平移、绕 y 轴旋转
-    └── types.ts        # Point、Point3D、Face 等基础类型
+    ├── core            # 不依赖 DOM / Canvas 的 3D 引擎核心
+    │   ├── index.ts    # core 公共导出
+    │   ├── mesh.ts     # 面深度计算和画家算法排序
+    │   ├── projection.ts # 透视投影：3D 坐标 -> 2D 坐标
+    │   ├── transform.ts  # 3D 变换：z 轴平移、绕 x/y 轴旋转
+    │   ├── types.ts    # Point、Point3D、Face、Mesh、Viewport
+    │   ├── viewport.ts # 标准化 2D 坐标 -> viewport 像素坐标
+    │   └── primitives
+    │       └── cube.ts # 内置 cube mesh 数据
+    ├── constants.ts    # demo 画布尺寸、颜色、FPS 和线宽
+    ├── index.ts        # demo 入口，负责 canvas 初始化和动画循环
+    ├── render.ts       # Canvas 2D 适配层：填色和轮廓绘制
+    └── task.ts         # 链式调用工具，用来组织顶点转换流水线
 ```
+
+## Core 边界
+
+现在已经抽出来的 `src/core` 是这个项目里最接近“3D 渲染引擎”的部分，它不依赖浏览器 DOM，也不依赖 Canvas API：
+
+- `types.ts`：引擎最基础的数据结构，包含 2D/3D 点、面、网格和 viewport。
+- `transform.ts`：点级别的 3D 变换，目前有 z 轴平移、绕 y 轴旋转、绕 x 轴旋转。
+- `projection.ts`：最小透视投影，把 3D 点变成标准化 2D 点。
+- `viewport.ts`：把标准化 2D 点映射到任意 viewport 像素坐标。
+- `mesh.ts`：网格面相关算法，目前包含按平均深度排序的画家算法。
+- `primitives/cube.ts`：内置的第一个 mesh primitive，后续可以继续增加 plane、sphere、custom mesh loader。
+
+还留在 core 外面的逻辑是 demo 或平台适配层：
+
+- `src/index.ts`：浏览器 canvas 初始化、DPR 处理、动画状态和帧循环。
+- `src/render.ts`：把 core 算出的面顺序和屏幕点真正画到 Canvas 2D 上。
+- `src/constants.ts`：demo 的画布尺寸、颜色、FPS 和线宽。
 
 ## 运行项目
 
@@ -87,10 +109,10 @@ bun test
 ```ts
 const projected = CUBE_VERTICES.map(v =>
   task(v)
-    .pipe(rotate_xz, angle)
-    .pipe(translate_z, dz)
-    .pipe(project)
-    .pipe(screen)
+    .pipe(rotateXZ, angle)
+    .pipe(translateZ, dz)
+    .pipe(perspectiveProject)
+    .pipe(mapToViewport, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT })
     .value()
 )
 ```
@@ -98,7 +120,7 @@ const projected = CUBE_VERTICES.map(v =>
 这段链式调用等价于：
 
 ```ts
-screen(project(translate_z(rotate_xz(v, angle), dz)))
+mapToViewport(perspectiveProject(translateZ(rotateXZ(v, angle), dz)), viewport)
 ```
 
 链式写法的好处是转换顺序更接近人的阅读习惯：先旋转，再平移，再投影，最后映射到屏幕。
@@ -110,7 +132,7 @@ screen(project(translate_z(rotate_xz(v, angle), dz)))
 - `Point3D`：三维世界坐标，包含 `x`、`y`、`z`
 - `Point`：二维坐标，包含 `x`、`y`
 
-透视投影在 `src/project.ts` 里：
+透视投影在 `src/core/projection.ts` 里：
 
 ```ts
 return { x: x / z, y: y / z }
@@ -118,7 +140,7 @@ return { x: x / z, y: y / z }
 
 这个公式的直觉是：`z` 越大，点越远；同样的 `x` 和 `y` 除以更大的 `z` 后会变小，所以远处的物体看起来更小。
 
-屏幕映射在 `src/screen.ts` 里，负责把 `-1` 到 `1` 附近的投影坐标转换成 canvas 像素坐标。因为 canvas 的 y 轴向下增长，而数学坐标里的 y 轴通常向上增长，所以这里也会翻转 y 轴。
+viewport 映射在 `src/core/viewport.ts` 里，负责把 `-1` 到 `1` 附近的投影坐标转换成像素坐标。Canvas 的 y 轴向下增长，而数学坐标里的 y 轴通常向上增长，所以这里也会翻转 y 轴。
 
 ## 立方体数据
 

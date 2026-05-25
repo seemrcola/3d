@@ -1,0 +1,5 @@
+export { Object3D } from './object3d'
+export { MeshObject } from './mesh-object'
+export { PerspectiveCamera } from './perspective-camera'
+export { Scene } from './scene'
+export type { PerspectiveCameraOptions } from './perspective-camera'

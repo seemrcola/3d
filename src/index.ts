@@ -7,21 +7,26 @@ import {
   LINE_WIDTH
 } from './constants'
 import {
-  CUBE_FACES,
-  CUBE_VERTICES,
-  mapToViewport,
-  perspectiveProject,
-  rotateXZ,
-  rotateYZ,
-  translateZ
+  CUBE_MESH,
+  MeshObject,
+  PerspectiveCamera,
+  Scene,
+  vec3
 } from './core'
-import { drawColoredFaces } from './render'
-import { task } from './task'
+import { Canvas3DRenderer } from './render'
 
-// dz 控制立方体沿 z 轴移动的距离。
 // angle 控制立方体当前旋转角度。
-let dz = 0
 let angle = 0
+const scene = new Scene()
+const cube = new MeshObject(CUBE_MESH)
+const camera = new PerspectiveCamera({
+  fov: Math.PI / 2,
+  aspect: CANVAS_WIDTH / CANVAS_HEIGHT,
+  near: 0.1,
+  far: 100
+})
+
+scene.add(cube)
 
 const game = document.querySelector('#canvas') as HTMLCanvasElement
 const dpr = window.devicePixelRatio || 1
@@ -38,49 +43,25 @@ game.style.width = CANVAS_WIDTH + 'px'
 game.style.height = CANVAS_HEIGHT + 'px'
 ctx.scale(dpr, dpr)
 
-// 每一帧先用背景色覆盖整个画布，清掉上一帧的内容。
-function clear() {
-  ctx.fillStyle = BACKGROUND_COLOR
-  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-}
+const renderer = new Canvas3DRenderer(ctx, {
+  backgroundColor: BACKGROUND_COLOR,
+  outlineColor: FOREGROUND_COLOR,
+  outlineWidth: LINE_WIDTH,
+  viewport: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
+})
 
 // 渲染一帧动画。
 //
 // 这一帧做的事情：
 // 1. 根据 FPS 计算时间步长。
-// 2. 更新 z 轴位移和旋转角度。
-// 3. 清空画布。
-// 4. 把立方体每个 3D 顶点先变换到当前帧的位置。
-// 5. 把变换后的 3D 点投影到屏幕上的 2D 点。
-// 6. 调用 render.ts 里的绘制算法，把六个面按深度填色并画出轮廓。
+// 2. 更新立方体对象的姿态。
+// 3. 交给 Canvas3DRenderer 渲染整个 scene。
 function frame() {
   const dt = 1 / FPS
-  dz += dt
-  dz = Math.min(2, dz)
   angle += 2 * Math.PI * dt
-  clear()
-
-  // 顶点转换流水线：
-  // 3D 顶点 -> 绕 y 轴旋转 -> 绕 x 轴旋转 -> 沿 z 轴平移。
-  const transformed = CUBE_VERTICES.map(v =>
-    task(v)
-      .pipe(rotateXZ, angle)
-      .pipe(rotateYZ, angle)
-      .pipe(translateZ, dz)
-      .value()
-  )
-
-  // 变换后的 3D 点 -> 透视投影 -> canvas 像素坐标。
-  const projected = transformed.map(v =>
-    task(v)
-      .pipe(perspectiveProject)
-      .pipe(mapToViewport, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT })
-      .value()
-  )
-
-  // 面的排序、填色和边框绘制都放在 render.ts 中，
-  // 这里保持主循环只描述“准备数据 -> 绘制”的流程。
-  drawColoredFaces(ctx, CUBE_FACES, transformed, projected, FOREGROUND_COLOR, LINE_WIDTH)
+  cube.position = vec3(0, 0, 2)
+  cube.rotation = vec3(angle, angle, 0)
+  renderer.render(scene, camera)
 
   // 用 setTimeout 模拟固定帧率的动画循环。
   // 之后如果要做更顺滑的动画，可以改成 requestAnimationFrame。

@@ -1,8 +1,9 @@
-import type { Face, Mesh, Point3D } from '../types'
+import type { Vec3 } from '../math'
+import type { Face, Mesh } from '../types'
 
 // 一个边长为 0.5 的立方体，中心在原点附近。
 // 前 4 个点是 z = 0.25 的面，后 4 个点是 z = -0.25 的面。
-export const CUBE_VERTICES: Point3D[] = [
+export const CUBE_VERTICES: Vec3[] = [
   { x: 0.25, y: 0.25, z: 0.25 },
   { x: -0.25, y: 0.25, z: 0.25 },
   { x: -0.25, y: -0.25, z: 0.25 },

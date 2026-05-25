@@ -1,14 +1,10 @@
+import type { Vec3 } from './math'
+
 // 2D 坐标点。
 // 经过投影后，3D 点会变成这种二维坐标。
 export interface Point {
   x: number
   y: number
-}
-
-// 3D 坐标点。
-// x: 左右方向，y: 上下方向，z: 深度方向。
-export interface Point3D extends Point {
-  z: number
 }
 
 // 立方体的一个面。
@@ -20,7 +16,7 @@ export interface Face {
 
 // 一个独立于渲染 API 的三维网格。
 export interface Mesh {
-  vertices: Point3D[]
+  vertices: Vec3[]
   faces: Face[]
 }
 

@@ -11,6 +11,9 @@ export interface Point3D extends Point {
   z: number
 }
 
-// 立方体的一条边。
-// 两个数字不是坐标，而是 CUBE_VERTICES 里的顶点下标。
-export type Edge = [number, number]
+// 立方体的一个面。
+// vertices 是 CUBE_VERTICES 里的四个顶点下标，按绕面一圈的顺序排列。
+export interface Face {
+  vertices: [number, number, number, number]
+  color: string
+}

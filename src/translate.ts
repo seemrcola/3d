@@ -19,3 +19,17 @@ export function rotate_xz({x, y, z}: Point3D, angle: number): Point3D {
     y
   }
 }
+
+// 在 y-z 平面里旋转一个 3D 点，也就是绕 x 轴旋转。
+//
+// x 保持不变，y 和 z 根据角度互相转换。
+// 这会让立方体看起来像是在上下方向转动。
+export function rotate_yz({x, y, z}: Point3D, angle: number): Point3D {
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  return {
+    y: y * c - z * s,
+    z: y * s + z * c,
+    x
+  }
+}

@@ -34,13 +34,14 @@
 ├── package.json        # Bun / TypeScript 项目配置
 ├── tsconfig.json       # TypeScript 编译检查配置
 └── src
-    ├── constants.ts    # 画布尺寸、颜色、FPS、立方体顶点和边
+    ├── constants.ts    # 画布尺寸、颜色、FPS、立方体顶点和面
     ├── index.ts        # 主渲染入口，负责 canvas 初始化和动画循环
     ├── project.ts      # 透视投影：3D 坐标 -> 2D 坐标
+    ├── render.ts       # 面的深度排序、填色和轮廓绘制
     ├── screen.ts       # 屏幕映射：标准化 2D 坐标 -> canvas 像素坐标
     ├── task.ts         # 链式调用工具，用来组织顶点转换流水线
     ├── translate.ts    # 3D 变换：z 轴平移、绕 y 轴旋转
-    └── types.ts        # Point、Point3D、Edge 等基础类型
+    └── types.ts        # Point、Point3D、Face 等基础类型
 ```
 
 ## 运行项目
@@ -124,9 +125,9 @@ return { x: x / z, y: y / z }
 立方体由两部分组成：
 
 - `CUBE_VERTICES`：8 个顶点
-- `CUBE_EDGES`：12 条边
+- `CUBE_FACES`：6 个面
 
-`CUBE_EDGES` 里的每一项都是两个顶点下标，例如 `[0, 1]` 表示把第 0 个顶点和第 1 个顶点连起来。
+`CUBE_FACES` 里的每一项都是四个顶点下标和一个颜色。渲染时会先用这四个顶点填充面，再沿这四个顶点闭合连线，所以不再需要单独维护 `CUBE_EDGES`。
 
 ## 后续可以尝试
 

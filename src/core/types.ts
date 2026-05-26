@@ -7,10 +7,11 @@ export interface Point {
   y: number
 }
 
-// 立方体的一个面。
-// vertices 是 mesh.vertices 里的四个顶点下标，按绕面一圈的顺序排列。
+// mesh 的一个面。
+// vertices 是 mesh.vertices 里的顶点下标，按绕面一圈的顺序排列。
+// 三角面、四边形和更高边数多边形都用同一种结构表示。
 export interface Face {
-  vertices: [number, number, number, number]
+  vertices: number[]
   color: string
 }
 

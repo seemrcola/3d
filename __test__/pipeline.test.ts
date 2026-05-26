@@ -1,17 +1,17 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  CUBE_MESH,
   createRenderCommands,
   MeshObject,
   PerspectiveCamera,
   Scene,
   vec3
 } from '../src/core'
+import { TEST_CUBE_MESH } from './fixtures/cube-mesh'
 
 describe('createRenderCommands', () => {
   test('turns scene mesh faces into sorted face commands', () => {
     const scene = new Scene()
-    const cube = new MeshObject(CUBE_MESH)
+    const cube = new MeshObject(TEST_CUBE_MESH)
     const camera = new PerspectiveCamera({
       fov: Math.PI / 2,
       aspect: 1,
@@ -33,7 +33,7 @@ describe('createRenderCommands', () => {
 
   test('skips faces whose vertices are clipped by the camera', () => {
     const scene = new Scene()
-    const cube = new MeshObject(CUBE_MESH)
+    const cube = new MeshObject(TEST_CUBE_MESH)
     const camera = new PerspectiveCamera({
       fov: Math.PI / 2,
       aspect: 1,

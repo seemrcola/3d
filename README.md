@@ -54,12 +54,14 @@
     │   │   └── scene.ts # 场景对象容器
     │   ├── transform.ts  # 3D 变换：z 轴平移、绕 x/y 轴旋转
     │   ├── types.ts    # Point、Point3D、Face、Mesh、Viewport
-    │   ├── viewport.ts # 标准化 2D 坐标 -> viewport 像素坐标
-    │   └── primitives
-    │       └── cube.ts # 内置 cube mesh 数据
+    │   └── viewport.ts # 标准化 2D 坐标 -> viewport 像素坐标
+    ├── assets.d.ts     # 允许 demo import .obj 资源
     ├── constants.ts    # demo 画布尺寸、颜色、FPS 和线宽
     ├── index.ts        # demo 入口，负责 canvas 初始化和动画循环
     └── render.ts       # Canvas3DRenderer：Canvas 2D 适配层
+├── models
+│   ├── cube.obj        # demo 使用的 OBJ 正方体模型
+│   └── teapot.obj      # 更复杂的 OBJ 测试模型
 ```
 
 ## Core 边界
@@ -78,13 +80,14 @@
 - `projection.ts`：最小透视投影，把 3D 点变成标准化 2D 点。
 - `viewport.ts`：把标准化 2D 点映射到任意 viewport 像素坐标。
 - `mesh.ts`：网格面相关算法，目前包含按平均深度排序的画家算法。
-- `primitives/cube.ts`：内置的第一个 mesh primitive，后续可以继续增加 plane、sphere、custom mesh loader。
+- `loaders/obj.ts`：OBJ 文本 loader，把模型文件转换成 core 的 `Mesh` 数据结构。
 
 还留在 core 外面的逻辑是 demo 或平台适配层：
 
 - `src/index.ts`：浏览器 canvas 初始化、DPR 处理、动画状态和帧循环。
 - `src/render.ts`：`Canvas3DRenderer`，把 core render commands 真正画到 Canvas 2D 上。
 - `src/constants.ts`：demo 的画布尺寸、颜色、FPS 和线宽。
+- `models/cube.obj`：demo 模型资源，不属于 core。
 
 ## 运行项目
 
@@ -124,11 +127,10 @@ bun test
 
 ## 核心流程
 
-主流程在 `src/index.ts` 里。demo 先创建 scene、cube、camera 和 renderer：
+主流程在 `src/index.ts` 里。demo 先创建 scene、camera 和 renderer，然后加载 `models/cube.obj`：
 
 ```ts
 const scene = new Scene()
-const cube = new MeshObject(CUBE_MESH)
 const camera = new PerspectiveCamera({
   fov: Math.PI / 2,
   aspect: CANVAS_WIDTH / CANVAS_HEIGHT,
@@ -142,14 +144,16 @@ const renderer = new Canvas3DRenderer(ctx, {
   viewport: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
 })
 
-scene.add(cube)
+const mesh = parseObjMesh(await response.text(), { color: '#E85D75' })
+const model = new MeshObject(mesh)
+scene.add(model)
 ```
 
 每一帧只更新对象状态，然后调用 renderer：
 
 ```ts
-cube.position = vec3(0, 0, 2)
-cube.rotation = vec3(angle, angle, 0)
+model.position = vec3(0, 0, 2)
+model.rotation = vec3(angle, angle, 0)
 renderer.render(scene, camera)
 ```
 
@@ -181,14 +185,15 @@ viewport 映射在 `src/core/viewport.ts` 里，负责把 `-1` 到 `1` 附近的
 - [Painter's algorithm](https://en.wikipedia.org/wiki/Painter%27s_algorithm)：当前项目按深度排序绘制面的思路。
 - [Canvas API](https://en.wikipedia.org/wiki/Canvas_element)：HTML canvas 和 Canvas 2D 绘制上下文的背景。
 
-## 立方体数据
+## 模型数据
 
-立方体由两部分组成：
+demo 当前使用 `models/cube.obj`。OBJ loader 会读取 `v` 顶点行和 `f` 面行，把它们转换成 core 的 `Mesh`：
 
-- `CUBE_VERTICES`：8 个顶点
-- `CUBE_FACES`：6 个面
+- `vertices`：3D 顶点数组
+- `faces`：面数组，每个面保存顶点下标和颜色
 
-`CUBE_FACES` 里的每一项都是四个顶点下标和一个颜色。渲染时会先用这四个顶点填充面，再沿这四个顶点闭合连线，所以不再需要单独维护 `CUBE_EDGES`。
+core 不再内置 cube primitive；测试里的 cube 数据放在 `__test__/fixtures`，demo 模型放在 `models`。
+`models/teapot.obj` 来自 McNopper/OpenGL 的 Utah teapot OBJ，原仓库使用 MIT License。
 
 ## 后续可以尝试
 

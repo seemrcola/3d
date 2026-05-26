@@ -12,5 +12,5 @@ export const FPS = 24
 export const BACKGROUND_COLOR = '#101010'
 export const FOREGROUND_COLOR = '#50FF50'
 
-// 立方体边线宽度。面填充颜色来自 CUBE_FACES，边线颜色来自 FOREGROUND_COLOR。
+// 模型边线宽度。面填充颜色来自 mesh face，边线颜色来自 FOREGROUND_COLOR。
 export const LINE_WIDTH = 2

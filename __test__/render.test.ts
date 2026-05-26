@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { CUBE_MESH, MeshObject, PerspectiveCamera, Scene, vec3 } from '../src/core'
+import { MeshObject, PerspectiveCamera, Scene, vec3 } from '../src/core'
 import { Canvas3DRenderer } from '../src/render'
+import { TEST_CUBE_MESH } from './fixtures/cube-mesh'
 
 function createFakeContext() {
   const calls: string[] = []
@@ -24,7 +25,7 @@ describe('Canvas3DRenderer', () => {
   test('clears the viewport and draws scene face commands', () => {
     const { calls, ctx } = createFakeContext()
     const scene = new Scene()
-    const cube = new MeshObject(CUBE_MESH)
+    const cube = new MeshObject(TEST_CUBE_MESH)
     const camera = new PerspectiveCamera({
       fov: Math.PI / 2,
       aspect: 1,

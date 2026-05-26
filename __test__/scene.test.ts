@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { CUBE_MESH, MeshObject, Scene } from '../src/core'
+import { MeshObject, Scene } from '../src/core'
+import { TEST_CUBE_MESH } from './fixtures/cube-mesh'
 
 describe('Scene', () => {
   test('adds and removes mesh objects', () => {
     const scene = new Scene()
-    const cube = new MeshObject(CUBE_MESH)
+    const cube = new MeshObject(TEST_CUBE_MESH)
 
     expect(scene.objects).toEqual([])
 

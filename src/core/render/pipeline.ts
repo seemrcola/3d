@@ -24,12 +24,11 @@ export function createRenderCommands(
       const faceVertices: Vec3[] = face.vertices.map(i => transformed[i]!)
       if (isBackFace(faceVertices, camera.position)) continue
 
-      // 用 near 平面裁剪；裁剪后可能变成 3~4 边形
-      const clipped = camera.clipNearFace(faceVertices)
+      // 用 near/far 平面裁剪；裁剪后可能变成 3~4 边形
+      const clipped = camera.clipDepthFace(faceVertices)
       if (!clipped) continue
 
       // 将裁剪后的顶点投影到屏幕像素
-      // 用 clipNearFace 裁剪后不会再有 near-plane 外的点，但 far-plane 可能导致 null
       const projected: Point[] = []
       let allVisible = true
       for (const v of clipped) {

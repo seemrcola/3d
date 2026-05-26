@@ -47,6 +47,58 @@ describe('createRenderCommands', () => {
     expect(createRenderCommands(scene, camera, { width: 800, height: 800 })).toEqual([])
   })
 
+  test('clips faces that cross the near plane instead of dropping them', () => {
+    const scene = new Scene()
+    const mesh: Mesh = {
+      vertices: [
+        vec3(-0.5, -0.5, 0.05),
+        vec3(0.5, -0.5, 0.2),
+        vec3(0, 0.5, 0.2)
+      ],
+      faces: [{ vertices: [0, 2, 1], color: '#near' }]
+    }
+    const triangle = new MeshObject(mesh)
+    const camera = new PerspectiveCamera({
+      fov: Math.PI / 2,
+      aspect: 1,
+      near: 0.1,
+      far: 10
+    })
+    scene.add(triangle)
+
+    const commands = createRenderCommands(scene, camera, { width: 800, height: 800 })
+
+    expect(commands).toHaveLength(1)
+    expect(commands[0]!.color).toBe('#near')
+    expect(commands[0]!.points).toHaveLength(4)
+  })
+
+  test('clips faces that cross the far plane instead of dropping them', () => {
+    const scene = new Scene()
+    const mesh: Mesh = {
+      vertices: [
+        vec3(-0.5, -0.5, 9),
+        vec3(0.5, -0.5, 11),
+        vec3(0, 0.5, 9)
+      ],
+      faces: [{ vertices: [0, 2, 1], color: '#far' }]
+    }
+    const triangle = new MeshObject(mesh)
+    const camera = new PerspectiveCamera({
+      fov: Math.PI / 2,
+      aspect: 1,
+      near: 0.1,
+      far: 10
+    })
+    scene.add(triangle)
+
+    const commands = createRenderCommands(scene, camera, { width: 800, height: 800 })
+
+    expect(commands).toHaveLength(1)
+    expect(commands[0]!.color).toBe('#far')
+    expect(commands[0]!.points).toHaveLength(4)
+  })
+
   test('culls faces that point away from the camera', () => {
     const scene = new Scene()
     const mesh: Mesh = {

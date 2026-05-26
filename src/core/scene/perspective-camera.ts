@@ -39,7 +39,7 @@ export class PerspectiveCamera extends Object3D {
     const cameraY = point.y - this.position.y
     const cameraZ = point.z - this.position.z
 
-    if (cameraZ <= this.near || cameraZ >= this.far) {
+    if (cameraZ < this.near || cameraZ > this.far) {
       return null
     }
 
@@ -66,37 +66,33 @@ export class PerspectiveCamera extends Object3D {
     )
   }
 
-  // 用 Sutherland–Hodgman 风格裁剪一个多边形面到 near 平面。
-  // vertices 是世界坐标系下的面顶点，返回值是世界坐标系下裁剪后的顶点。
-  // 返回 null 表示整个面都在近裁剪面后面，可以丢弃。
-  clipNearFace(vertices: Vec3[]): Vec3[] | null {
+  private clipDepthPlane(
+    vertices: Vec3[],
+    planeZ: number,
+    isInside: (cameraZ: number) => boolean
+  ): Vec3[] | null {
     const n = vertices.length
     const cameraSpace = vertices.map(v => this.toCameraSpace(v))
-    const behind: boolean[] = cameraSpace.map(v => v.z <= this.near)
+    const inside: boolean[] = cameraSpace.map(v => isInside(v.z))
 
-    // 全部在 near 后面 → 丢弃
-    if (behind.every(b => b)) return null
-    // 全部在 near 前面 → 原样返回
-    if (behind.every(b => !b)) return vertices
+    if (inside.every(Boolean)) return vertices
+    if (inside.every(value => !value)) return null
 
-    // 部分在 near 后面 → 逐边裁剪
     const result: Vec3[] = []
     for (let i = 0; i < n; i++) {
       const curr = vertices[i]!
       const next = vertices[(i + 1) % n]!
       const currCs = cameraSpace[i]!
       const nextCs = cameraSpace[(i + 1) % n]!
-      const currBehind = behind[i]!
-      const nextBehind = behind[(i + 1) % n]!
+      const currInside = inside[i]!
+      const nextInside = inside[(i + 1) % n]!
 
-      // 当前顶点在 near 前面 → 保留
-      if (!currBehind) {
+      if (currInside) {
         result.push(curr)
       }
 
-      // 边跨越 near 平面 → 计算交点并插入
-      if (currBehind !== nextBehind) {
-        const t = (this.near - currCs.z) / (nextCs.z - currCs.z)
+      if (currInside !== nextInside) {
+        const t = (planeZ - currCs.z) / (nextCs.z - currCs.z)
         result.push(vec3(
           curr.x + t * (next.x - curr.x),
           curr.y + t * (next.y - curr.y),
@@ -106,5 +102,20 @@ export class PerspectiveCamera extends Object3D {
     }
 
     return result.length >= 3 ? result : null
+  }
+
+  // 用 Sutherland–Hodgman 风格裁剪一个多边形面到 near 平面。
+  // vertices 是世界坐标系下的面顶点，返回值是世界坐标系下裁剪后的顶点。
+  // 返回 null 表示整个面都在近裁剪面后面，可以丢弃。
+  clipNearFace(vertices: Vec3[]): Vec3[] | null {
+    return this.clipDepthPlane(vertices, this.near, cameraZ => cameraZ >= this.near)
+  }
+
+  // 依次裁剪 near 和 far 深度平面，保证后续投影不会因为单个越界顶点丢掉整张面。
+  clipDepthFace(vertices: Vec3[]): Vec3[] | null {
+    const nearClipped = this.clipNearFace(vertices)
+    if (!nearClipped) return null
+
+    return this.clipDepthPlane(nearClipped, this.far, cameraZ => cameraZ <= this.far)
   }
 }

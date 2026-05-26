@@ -1,7 +1,7 @@
-# 3D Wireframe Cube
+# 3D Canvas Renderer
 @tsoding 从tsoding那里学到的一点新知识。
 
-一个用 TypeScript 和 Canvas 手写的最小 3D 线框立方体渲染项目。
+一个用 TypeScript 和 Canvas 手写的最小 3D 渲染项目。
 
 这个项目没有使用 Three.js 之类的 3D 引擎，而是自己完成一条简单的 3D 渲染流水线：
 
@@ -17,7 +17,7 @@
 
 ## 效果
 
-页面会在 `canvas` 上绘制一个彩色面立方体。每一帧里，demo 会更新 `MeshObject` 的旋转，再通过 `Canvas3DRenderer.render(scene, camera)` 渲染整个场景。
+页面会在 `canvas` 上绘制一个彩色立方体和一个 teapot OBJ 模型。每一帧里，demo 会更新 `MeshObject` 的旋转，再通过 `Canvas3DRenderer.render(scene, camera)` 渲染整个场景。
 
 ## 技术栈
 
@@ -41,7 +41,6 @@
     │   │   ├── mat4.ts # 4x4 矩阵、矩阵乘法、点变换、透视矩阵
     │   │   └── vec3.ts # 3D 向量加减、缩放、点乘、叉乘、归一化
     │   ├── mesh.ts     # 面深度计算和画家算法排序
-    │   ├── projection.ts # 透视投影：3D 坐标 -> 2D 坐标
     │   ├── render
     │   │   ├── commands.ts # 不依赖 Canvas 的绘制命令类型
     │   │   ├── index.ts
@@ -52,8 +51,8 @@
     │   │   ├── object3d.ts # position / rotation / scale -> localMatrix
     │   │   ├── perspective-camera.ts # MVP 透视相机
     │   │   └── scene.ts # 场景对象容器
-    │   ├── transform.ts  # 3D 变换：z 轴平移、绕 x/y 轴旋转
-    │   ├── types.ts    # Point、Point3D、Face、Mesh、Viewport
+    │   ├── loaders      # OBJ 等模型 loader
+    │   ├── types.ts    # Point、Face、Mesh、Viewport
     │   └── viewport.ts # 标准化 2D 坐标 -> viewport 像素坐标
     ├── assets.d.ts     # 允许 demo import .obj 资源
     ├── constants.ts    # demo 画布尺寸、颜色、FPS 和线宽
@@ -68,16 +67,14 @@
 
 现在已经抽出来的 `src/core` 是这个项目里最接近“3D 渲染引擎”的部分，它不依赖浏览器 DOM，也不依赖 Canvas API：
 
-- `types.ts`：引擎最基础的数据结构，包含 2D/3D 点、面、网格和 viewport。
+- `types.ts`：引擎最基础的数据结构，包含 2D 点、面、网格和 viewport。
 - `math/vec3.ts`：3D 向量数学，包含加减、缩放、点乘、叉乘、长度和归一化。
 - `math/mat4.ts`：4x4 矩阵数学，包含 identity、平移、旋转、缩放、矩阵乘法、点变换和透视投影矩阵。
 - `scene/object3d.ts`：基础 3D 对象，持有 position、rotation、scale，并生成 localMatrix。
-- `scene/mesh-object.ts`：带 mesh 数据的 3D 对象，目前用于把 cube 的几何数据和 transform 状态放到一起。
+- `scene/mesh-object.ts`：带 mesh 数据的 3D 对象，目前用于把 OBJ 几何数据和 transform 状态放到一起。
 - `scene/scene.ts`：场景容器，负责管理要渲染的对象。
-- `scene/perspective-camera.ts`：MVP 透视相机，目前看向正 z 方向，负责把世界点投影到 viewport。
+- `scene/perspective-camera.ts`：MVP 透视相机，目前看向正 z 方向，负责深度裁剪并把世界点投影到 viewport。
 - `render/pipeline.ts`：核心渲染管线，把 `Scene + PerspectiveCamera + Viewport` 转成不依赖 Canvas 的 `RenderCommand[]`。
-- `transform.ts`：点级别的 3D 变换，目前有 z 轴平移、绕 y 轴旋转、绕 x 轴旋转。
-- `projection.ts`：最小透视投影，把 3D 点变成标准化 2D 点。
 - `viewport.ts`：把标准化 2D 点映射到任意 viewport 像素坐标。
 - `mesh.ts`：网格面相关算法，目前包含按平均深度排序的画家算法。
 - `loaders/obj.ts`：OBJ 文本 loader，把模型文件转换成 core 的 `Mesh` 数据结构。
@@ -87,7 +84,7 @@
 - `src/index.ts`：浏览器 canvas 初始化、DPR 处理、动画状态和帧循环。
 - `src/render.ts`：`Canvas3DRenderer`，把 core render commands 真正画到 Canvas 2D 上。
 - `src/constants.ts`：demo 的画布尺寸、颜色、FPS 和线宽。
-- `models/cube.obj`：demo 模型资源，不属于 core。
+- `models/*.obj`：demo 模型资源，不属于 core。
 
 ## 运行项目
 
@@ -127,7 +124,7 @@ bun test
 
 ## 核心流程
 
-主流程在 `src/index.ts` 里。demo 先创建 scene、camera 和 renderer，然后加载 `models/cube.obj`：
+主流程在 `src/index.ts` 里。demo 先创建 scene、camera 和 renderer，然后加载 `models/cube.obj` 和 `models/teapot.obj`：
 
 ```ts
 const scene = new Scene()
@@ -157,22 +154,18 @@ model.rotation = vec3(angle, angle, 0)
 renderer.render(scene, camera)
 ```
 
-`Canvas3DRenderer` 内部会调用 core render pipeline：遍历 scene 中的 mesh，使用对象的 `localMatrix` 变换顶点，使用 camera 投影到 viewport，按深度排序后输出绘制命令，最后把这些命令画到 Canvas 2D。
+`Canvas3DRenderer` 内部会调用 core render pipeline：遍历 scene 中的 mesh，使用对象的 `localMatrix` 变换顶点，使用 camera 按 near/far 平面裁剪并投影到 viewport，按深度排序后输出绘制命令，最后把这些命令画到 Canvas 2D。
 
 ## 坐标和投影
 
-项目里有两种坐标：
+项目里主要使用两种坐标：
 
-- `Point3D`：三维世界坐标，包含 `x`、`y`、`z`
-- `Point`：二维坐标，包含 `x`、`y`
+- `Vec3`：三维向量或世界坐标，包含 `x`、`y`、`z`
+- `Point`：二维屏幕坐标，包含 `x`、`y`
 
-MVP 里实际渲染使用的是 `src/core/scene/perspective-camera.ts`。它会把点先转换到相机相对坐标，再做透视投影和 viewport 映射。`src/core/projection.ts` 里仍保留了最小点级透视函数，便于教学和低层测试：
+MVP 里实际渲染使用的是 `src/core/scene/perspective-camera.ts`。它会把点先转换到相机相对坐标，裁剪 near/far 深度平面，再做透视投影和 viewport 映射。
 
-```ts
-return { x: x / z, y: y / z }
-```
-
-这个公式的直觉是：`z` 越大，点越远；同样的 `x` 和 `y` 除以更大的 `z` 后会变小，所以远处的物体看起来更小。
+透视投影的直觉是：`z` 越大，点越远；同样的 `x` 和 `y` 除以更大的 `z` 后会变小，所以远处的物体看起来更小。
 
 viewport 映射在 `src/core/viewport.ts` 里，负责把 `-1` 到 `1` 附近的投影坐标转换成像素坐标。Canvas 的 y 轴向下增长，而数学坐标里的 y 轴通常向上增长，所以这里也会翻转 y 轴。
 
@@ -187,7 +180,7 @@ viewport 映射在 `src/core/viewport.ts` 里，负责把 `-1` 到 `1` 附近的
 
 ## 模型数据
 
-demo 当前使用 `models/cube.obj`。OBJ loader 会读取 `v` 顶点行和 `f` 面行，把它们转换成 core 的 `Mesh`：
+demo 当前使用 `models/cube.obj` 和 `models/teapot.obj`。OBJ loader 会读取 `v` 顶点行和 `f` 面行，把它们转换成 core 的 `Mesh`：
 
 - `vertices`：3D 顶点数组
 - `faces`：面数组，每个面保存顶点下标和颜色
@@ -201,5 +194,5 @@ core 不再内置 cube primitive；测试里的 cube 数据放在 `__test__/fixt
 - 增加 `Material`，把颜色从 `Face` 拆出来
 - 增加 `Renderer.render(scene, camera)` 的更多目标，例如 SVG renderer
 - 给 `PerspectiveCamera` 增加旋转和 view matrix
-- 增加 back-face culling，跳过背向相机的面
-- 增加 near-plane clipping，处理面穿过相机近裁剪面的情况
+- 给 `PerspectiveCamera` 增加完整视锥的左右/上下裁剪
+- 增加光照或材质系统

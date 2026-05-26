@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   createRenderCommands,
+  type Mesh,
   MeshObject,
   PerspectiveCamera,
   Scene,
@@ -9,7 +10,7 @@ import {
 import { TEST_CUBE_MESH } from './fixtures/cube-mesh'
 
 describe('createRenderCommands', () => {
-  test('turns scene mesh faces into sorted face commands', () => {
+  test('turns visible scene mesh faces into sorted face commands', () => {
     const scene = new Scene()
     const cube = new MeshObject(TEST_CUBE_MESH)
     const camera = new PerspectiveCamera({
@@ -23,7 +24,7 @@ describe('createRenderCommands', () => {
 
     const commands = createRenderCommands(scene, camera, { width: 800, height: 800 })
 
-    expect(commands).toHaveLength(6)
+    expect(commands).toHaveLength(1)
     expect(commands.every(command => command.type === 'face')).toBe(true)
     expect(commands.map(command => command.depth)).toEqual([...commands.map(command => command.depth)].sort((a, b) => b - a))
     expect(commands[0]!.points).toHaveLength(4)
@@ -44,5 +45,35 @@ describe('createRenderCommands', () => {
     scene.add(cube)
 
     expect(createRenderCommands(scene, camera, { width: 800, height: 800 })).toEqual([])
+  })
+
+  test('culls faces that point away from the camera', () => {
+    const scene = new Scene()
+    const mesh: Mesh = {
+      vertices: [
+        vec3(-0.5, 0.5, 0),
+        vec3(0.5, 0.5, 0),
+        vec3(0.5, -0.5, 0),
+        vec3(-0.5, -0.5, 0)
+      ],
+      faces: [
+        { vertices: [0, 1, 2, 3], color: '#front' },
+        { vertices: [0, 3, 2, 1], color: '#back' }
+      ]
+    }
+    const object = new MeshObject(mesh)
+    const camera = new PerspectiveCamera({
+      fov: Math.PI / 2,
+      aspect: 1,
+      near: 0.1,
+      far: 100
+    })
+    object.position = vec3(0, 0, 2)
+    scene.add(object)
+
+    const commands = createRenderCommands(scene, camera, { width: 800, height: 800 })
+
+    expect(commands).toHaveLength(1)
+    expect(commands[0]!.color).toBe('#front')
   })
 })

@@ -2,7 +2,7 @@ export type { Face, Mesh, Point, Viewport } from './types'
 export type { DepthSortedFace } from './mesh'
 export type { Mat4, Vec3 } from './math'
 
-export { sortFacesByDepth } from './mesh'
+export { isBackFace, sortFacesByDepth } from './mesh'
 export type { FaceRenderCommand, RenderCommand } from './render'
 export { createRenderCommands } from './render'
 export type { ParseObjMeshOptions } from './loaders/obj'

@@ -3,6 +3,7 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   FOREGROUND_COLOR,
+  FILL_ALPHA,
   FPS,
   LINE_WIDTH
 } from './constants'
@@ -79,6 +80,7 @@ ctx.scale(dpr, dpr)
 
 const renderer = new Canvas3DRenderer(ctx, {
   backgroundColor: BACKGROUND_COLOR,
+  fillAlpha: FILL_ALPHA,
   outlineColor: FOREGROUND_COLOR,
   outlineWidth: LINE_WIDTH,
   viewport: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }

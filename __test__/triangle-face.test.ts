@@ -16,7 +16,7 @@ describe('triangle mesh faces', () => {
         vec3(-0.25, -0.25, 0),
         vec3(0.25, -0.25, 0)
       ],
-      faces: [{ vertices: [0, 1, 2], color: '#CCCCCC' }]
+      faces: [{ vertices: [0, 2, 1], color: '#CCCCCC' }]
     }
     const scene = new Scene()
     const triangle = new MeshObject(mesh)

@@ -14,3 +14,6 @@ export const FOREGROUND_COLOR = '#50FF50'
 
 // 模型边线宽度。面填充颜色来自 mesh face，边线颜色来自 FOREGROUND_COLOR。
 export const LINE_WIDTH = 2
+
+// 模型面填充透明度。描边保持不透明，方便观察背面和内部遮挡关系。
+export const FILL_ALPHA = 0.45

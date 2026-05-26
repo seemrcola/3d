@@ -2,7 +2,7 @@ import type { Vec3 } from '../math'
 import type { Point, Viewport } from '../types'
 import type { FaceRenderCommand, RenderCommand } from './commands'
 import { PerspectiveCamera, Scene } from '../scene'
-import { sortFacesByDepth } from '../mesh'
+import { isBackFace, sortFacesByDepth } from '../mesh'
 import { transformPointMat4 } from '../math'
 
 // 核心渲染管线：把 Scene + Camera + Viewport 转成抽象绘制命令。
@@ -22,6 +22,7 @@ export function createRenderCommands(
     for (const face of sortFacesByDepth(object.mesh.faces, transformed)) {
       // 取出面在世界空间的顶点
       const faceVertices: Vec3[] = face.vertices.map(i => transformed[i]!)
+      if (isBackFace(faceVertices, camera.position)) continue
 
       // 用 near 平面裁剪；裁剪后可能变成 3~4 边形
       const clipped = camera.clipNearFace(faceVertices)

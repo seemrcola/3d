@@ -3,6 +3,7 @@ import { createRenderCommands } from './core'
 
 export interface Canvas3DRendererOptions {
   backgroundColor: string
+  fillAlpha?: number
   outlineColor: string
   outlineWidth: number
   viewport: Viewport
@@ -76,9 +77,11 @@ export class Canvas3DRenderer {
     this.ctx.lineWidth = this.options.outlineWidth
 
     // 使用画家算法(从远到近),在同一次遍历中先填充面再描边。
-    // 后面的面会自然覆盖前面的面(包括前面面的边框),符合深度关系。
+    // 填充使用透明度,描边恢复不透明,方便观察背面和内部遮挡关系。
     for (const command of commands) {
+      this.ctx.globalAlpha = this.options.fillAlpha ?? 1
       drawFaceCommand(this.ctx, command)
+      this.ctx.globalAlpha = 1
       strokeFaceCommand(this.ctx, command)
     }
   }

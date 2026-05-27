@@ -290,7 +290,7 @@ Wiki：
 
 ```txt
 index.html
-  -> src/index.ts
+  -> src/demo/index.ts
   -> 加载 OBJ 文件
   -> parseObjMesh(source)
   -> new MeshObject(mesh)
@@ -309,7 +309,7 @@ index.html
 
 更具体地说：
 
-1. `src/index.ts` 创建 `Scene`、`PerspectiveCamera` 和 `Canvas3DRenderer`。
+1. `src/demo/index.ts` 创建 `Scene`、`PerspectiveCamera` 和 `Canvas3DRenderer`。
 2. `loadObj` 使用浏览器 `fetch` 读取 `models/cube.obj` 和 `models/teapot.obj`。
 3. `parseObjMesh` 解析 OBJ 的 `v` 顶点行和 `f` 面行，生成 `Mesh`。
 4. `MeshObject` 把 mesh 和 `position / rotation / scale` 放在一起。
@@ -327,7 +327,57 @@ index.html
 
 - `src/core` 是可测试、可复用的渲染核心，不依赖 DOM 和 Canvas。
 - `src/render.ts` 是 Canvas 2D 适配层。
-- `src/index.ts` 是 demo 和浏览器生命周期。
+- `src/demo/index.ts` 是基础 demo 和浏览器生命周期。
+- `src/graph/app.ts` 是关系图谱页面入口，它复用相机投影，但节点使用 Canvas 2D billboard 绘制。
+
+## 关系图谱流程
+
+`graph.html` 展示的是另一条学习路线：不再渲染 OBJ mesh，而是把 3D 坐标投影成屏幕上的球形节点。
+
+```txt
+graph.html
+  -> src/graph/app.ts
+  -> createEntryGraph()
+  -> createGraphPhysics(nodes, links)
+  -> physics.step(dt)
+  -> PerspectiveCamera.projectPoint(position)
+  -> drawLinks()
+  -> drawSpheres()
+  -> drawLabels()
+```
+
+这条流程里有几个重点：
+
+1. `src/graph/data.ts` 只负责数据。当前默认是 `index.html` 和 `graph.html` 两个入口的项目结构图。
+2. `src/graph/physics.ts` 只负责物理状态。它不知道 Canvas，也不知道 DOM。
+3. `src/graph/app.ts` 负责把物理坐标投影成屏幕坐标，再画线、球、标签和 inspector。
+4. graph 节点不是 `MeshObject`，而是 billboard：它有 3D 位置，但最终用 Canvas 圆形渐变画出来。
+5. `Canvas3DRenderer.render(scene, camera)` 在 graph 页面里主要用于清屏；真正的图谱元素是叠加绘制。
+
+### 图谱物理的学习点
+
+图谱物理不是 3D 引擎自带的能力，而是额外的一层 simulation：
+
+- **弹簧力**：每条边记录初始长度，拖拽后会尝试把两个端点拉回这个距离。
+- **锚点力**：每个节点记住初始位置，持续受到一个很弱的回拉力。
+- **阻尼**：速度每帧乘以一个小于 1 的系数，避免永远震荡。
+- **排斥力**：距离太近的节点互相推开，减少重叠。
+- **空间网格**：排斥力不再全量两两比较，而是只检查相邻格子里的节点。
+
+空间网格优化的直觉：
+
+```txt
+没有空间网格:
+  每个节点和所有其他节点比较
+  复杂度约 O(n^2)
+
+有空间网格:
+  先按坐标把节点放进格子
+  每个节点只检查附近格子
+  分散情况下接近 O(n)
+```
+
+这不是最强的图谱算法，但很适合学习项目：代码短，效果直观，也能解释为什么大规模图谱需要空间索引或 WebGL。
 
 ## 代码阅读顺序
 
@@ -438,7 +488,7 @@ Wiki：
 最后读：
 
 - `src/render.ts`
-- `src/index.ts`
+- `src/demo/index.ts`
 - `index.html`
 - `src/constants.ts`
 
@@ -448,6 +498,23 @@ Wiki：
 - 明白 `ctx.scale(dpr, dpr)` 是为了高分屏清晰。
 - 明白动画循环每帧只更新对象状态，再重新渲染整个场景。
 - 明白 `setTimeout` 可以替换成更适合浏览器动画的 `requestAnimationFrame`。
+
+### 第七遍：看关系图谱层
+
+再读：
+
+- `graph.html`
+- `src/graph/data.ts`
+- `src/graph/physics.ts`
+- `src/graph/app.ts`
+
+目标：
+
+- 明白同一个项目可以有多个 HTML 入口。
+- 明白 `index.html` 和 `graph.html` 的入口逻辑互不干扰。
+- 明白 graph 页面如何复用 `PerspectiveCamera.projectPoint`。
+- 明白 billboard 节点为什么比 mesh 节点更适合大量图谱节点。
+- 明白空间网格为什么能减少排斥力计算次数。
 
 ## 一张总图
 
@@ -491,7 +558,7 @@ Canvas fill / stroke
 ## 推荐学习路径
 
 1. 跑通项目，确认能看到 cube 和 teapot。
-2. 改 `src/index.ts` 里的 `position`、`rotation`、`scale`，观察屏幕变化。
+2. 改 `src/demo/index.ts` 里的 `position`、`rotation`、`scale`，观察屏幕变化。
 3. 给 `vec3.ts` 和 `mat4.ts` 的每个函数配一个手算例子。
 4. 在 `perspective-camera.ts` 打印 `cameraX / cameraY / cameraZ`，观察投影前后的数值。
 5. 暂时关闭 `sortFacesByDepth`，观察面遮挡为什么会错。
@@ -501,6 +568,8 @@ Canvas fill / stroke
 9. 实现 z-buffer，替换画家算法。
 10. 实现三角形光栅化和 barycentric interpolation。
 11. 再去学 WebGL/WebGPU，把这里的 CPU 管线映射到 GPU pipeline。
+12. 打开 `graph.html`，拖动入口节点，观察弹簧、锚点和阻尼的效果。
+13. 把 `createEntryGraph()` 临时改成 `createStressGraph(128)`，观察节点数变多后的性能变化。
 
 ## 后续应该补的知识
 

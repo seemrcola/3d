@@ -29,7 +29,8 @@
 
 ```txt
 .
-├── index.html          # 页面入口，挂载 canvas 并加载 src/index.ts
+├── index.html          # 基础 3D demo 页面，加载 src/demo/index.ts
+├── graph.html          # 3D 关系图谱页面，加载 src/graph/app.ts
 ├── package.json        # Bun / TypeScript 项目配置
 ├── tsconfig.json       # TypeScript 编译检查配置
 ├── __test__            # 集中的 Bun 测试文件
@@ -56,7 +57,12 @@
     │   └── viewport.ts # 标准化 2D 坐标 -> viewport 像素坐标
     ├── assets.d.ts     # 允许 demo import .obj 资源
     ├── constants.ts    # demo 画布尺寸、颜色、FPS 和线宽
-    ├── index.ts        # demo 入口，负责 canvas 初始化和动画循环
+    ├── demo
+    │   └── index.ts    # demo 入口，负责 canvas 初始化和动画循环
+    ├── graph
+    │   ├── app.ts      # 关系图谱入口，负责交互、标签和叠加绘制
+    │   ├── data.ts     # 图谱节点/边数据，包括双入口结构图和压力测试图
+    │   └── physics.ts  # 图谱弹簧、阻尼、排斥力和命中测试
     └── render.ts       # Canvas3DRenderer：Canvas 2D 适配层
 ├── models
 │   ├── cube.obj        # demo 使用的 OBJ 正方体模型
@@ -81,7 +87,10 @@
 
 还留在 core 外面的逻辑是 demo 或平台适配层：
 
-- `src/index.ts`：浏览器 canvas 初始化、DPR 处理、动画状态和帧循环。
+- `src/demo/index.ts`：浏览器 canvas 初始化、DPR 处理、动画状态和帧循环。
+- `src/graph/app.ts`：图谱页面入口，复用 core 投影节点，并叠加连线、标签和交互反馈。
+- `src/graph/data.ts`：图谱数据层，当前默认展示 `index.html` / `graph.html` 双入口结构图，也保留 `createStressGraph(128)` 做性能实验。
+- `src/graph/physics.ts`：图谱交互层的物理模拟，包含拖拽、弹簧、阻尼、排斥力和命中测试。
 - `src/render.ts`：`Canvas3DRenderer`，把 core render commands 真正画到 Canvas 2D 上。
 - `src/constants.ts`：demo 的画布尺寸、颜色、FPS 和线宽。
 - `models/*.obj`：demo 模型资源，不属于 core。
@@ -124,7 +133,7 @@ bun test
 
 ## 核心流程
 
-主流程在 `src/index.ts` 里。demo 先创建 scene、camera 和 renderer，然后加载 `models/cube.obj` 和 `models/teapot.obj`：
+基础 3D demo 主流程在 `src/demo/index.ts` 里。demo 先创建 scene、camera 和 renderer，然后加载 `models/cube.obj` 和 `models/teapot.obj`：
 
 ```ts
 const scene = new Scene()
@@ -155,6 +164,37 @@ renderer.render(scene, camera)
 ```
 
 `Canvas3DRenderer` 内部会调用 core render pipeline：遍历 scene 中的 mesh，使用对象的 `localMatrix` 变换顶点，使用 camera 按 near/far 平面裁剪并投影到 viewport，按深度排序后输出绘制命令，最后把这些命令画到 Canvas 2D。
+
+## 关系图谱页面
+
+`graph.html` 是一个学习用的图谱页面，它不是完整的大规模图谱引擎，而是展示“如何复用 3D 投影能力做交互图谱”。
+
+当前默认数据来自 `src/graph/data.ts` 的 `createEntryGraph()`：
+
+- `index.html`：基础 3D demo 入口，加载 `src/demo/index.ts`。
+- `graph.html`：关系图谱入口，加载 `src/graph/app.ts`。
+- `src/core` 和 `src/render.ts`：两个入口共享的核心能力。
+- `src/graph/data.ts` 和 `src/graph/physics.ts`：graph 页面独有的数据和物理交互。
+
+graph 页面里的节点没有使用 `MeshObject`。原因是上百个 mesh 节点会触发大量面排序、矩阵变换和 Canvas 多边形绘制。现在的实现把节点当成 **billboard**：
+
+```txt
+3D 节点坐标
+  -> PerspectiveCamera.projectPoint
+  -> 屏幕像素坐标
+  -> Canvas 2D 径向渐变圆
+```
+
+这样仍然能保留“近大远小”的 3D 感，但每个节点只是一个圆形渐变，成本比 mesh 低很多。
+
+`src/graph/physics.ts` 负责节点运动：
+
+- 边是弹簧：两个相连节点会被拉回初始边长。
+- 节点有锚点：每个节点会被轻微拉回初始位置，避免整张图漂走。
+- 节点有排斥力：距离太近的节点会互相推开。
+- 排斥力使用空间网格：节点先按坐标分桶，只检查当前格子和相邻格子，避免所有节点两两比较。
+
+如果要重新做上百节点压力测试，可以把 `src/graph/app.ts` 里的 `createEntryGraph()` 临时改成 `createStressGraph(128)`。
 
 ## 坐标和投影
 
@@ -196,3 +236,5 @@ core 不再内置 cube primitive；测试里的 cube 数据放在 `__test__/fixt
 - 给 `PerspectiveCamera` 增加旋转和 view matrix
 - 给 `PerspectiveCamera` 增加完整视锥的左右/上下裁剪
 - 增加光照或材质系统
+- 给 graph 页面增加物理休眠机制：节点速度足够低时暂停 `physics.step()`，拖拽时再唤醒
+- 把 graph 节点球预渲染到离屏 canvas，减少每帧 `createRadialGradient` 的成本

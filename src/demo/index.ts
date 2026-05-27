@@ -6,17 +6,17 @@ import {
   FILL_ALPHA,
   FPS,
   LINE_WIDTH
-} from './constants'
+} from '../constants'
 import {
   MeshObject,
   PerspectiveCamera,
   parseObjMesh,
   Scene,
   vec3
-} from './core'
-import { Canvas3DRenderer } from './render'
-import cubeObjUrl from '../models/cube.obj'
-import teapotObjUrl from '../models/teapot.obj'
+} from '../core'
+import { Canvas3DRenderer } from '../render'
+import cubeObjUrl from '../../models/cube.obj'
+import teapotObjUrl from '../../models/teapot.obj'
 
 // angle 控制模型当前旋转角度。
 let angle = 0
